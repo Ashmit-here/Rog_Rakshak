@@ -1,19 +1,39 @@
-# React + Vite
+# Rog_Rakshak
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+Rog_Rakshak is an area-based disease surveillance project. Its first development
+stage includes a React landing page and an Express health-check API. The page
+does not display disease statistics.
 
-Currently, two official plugins are available:
+## Run locally
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Start the backend in one terminal:
 
-## React Compiler
+```sh
+cd backend
+cp .env.example .env
+npm run dev
+```
 
-The React Compiler is enabled on this template. See [this documentation](https://react.dev/learn/react-compiler) for more information.
+Start the frontend in another terminal:
 
-Note: This will impact Vite dev & build performances.
-You can also try [the experimental native React Compiler support in plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react/README.md#rust-react-compiler) by using `compiler: true` in the plugin options instead of using the Babel plugin.
+```sh
+cd frontend
+npm run dev
+```
 
-## Expanding the Oxlint configuration
+The backend runs at `http://localhost:5001` and the Vite frontend at
+`http://localhost:5173`. The frontend checks `GET /api/health` and displays the
+connection status. Set `VITE_API_BASE_URL` if the API uses a different base URL.
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+## Backend configuration
+
+`backend/.env.example` documents the supported settings:
+
+- `PORT`: API port (defaults to `5001`)
+- `FRONTEND_URL`: allowed frontend origin for CORS (defaults to
+  `http://localhost:5173`)
+
+## Backend API
+
+- `GET /api/health` — returns the API status and current timestamp.
+- Other paths return a JSON 404 response.
