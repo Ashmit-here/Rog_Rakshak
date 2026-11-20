@@ -1,23 +1,23 @@
-const express = require('express')
-const corsMiddleware = require('./config/cors')
-const errorHandler = require('./middleware/errorHandler')
-const notFound = require('./middleware/notFound')
-const healthRoutes = require('./routes/healthRoutes')
+const app = require('./app')
+const { validateEnvironment } = require('./config/environment')
 
-const app = express()
-const port = process.env.PORT || 5001
+function startServer() {
+  try {
+    validateEnvironment()
+  } catch (error) {
+    console.error(`Invalid server configuration: ${error.message}`)
+    process.exitCode = 1
+    return null
+  }
 
-app.use(corsMiddleware)
-app.use(express.json())
+  const port = process.env.PORT || 5001
+  return app.listen(port, () => {
+    console.log(`Rog_Rakshak API listening on port ${port}`)
+  })
+}
 
-app.get('/', (req, res) => {
-  res.json({ message: 'Rog_Rakshak API is running' })
-})
-app.use('/api/health', healthRoutes)
+if (require.main === module) {
+  startServer()
+}
 
-app.use(notFound)
-app.use(errorHandler)
-
-app.listen(port, () => {
-  console.log(`Rog_Rakshak API listening on port ${port}`)
-})
+module.exports = { app, startServer }
