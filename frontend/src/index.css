@@ -30,21 +30,25 @@ html {
 body {
   min-width: 320px;
   margin: 0;
+  background: #fff;
 }
 
 button,
-a {
+input,
+select {
   font: inherit;
 }
 
-a {
-  color: inherit;
+button:focus-visible,
+a:focus-visible,
+input:focus-visible,
+select:focus-visible {
+  outline: 3px solid #e6a848;
+  outline-offset: 3px;
 }
 
-button:focus-visible,
-a:focus-visible {
-  outline: 3px solid #e6a848;
-  outline-offset: 4px;
+button {
+  font-family: inherit;
 }
 
 ::selection {

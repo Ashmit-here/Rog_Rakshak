@@ -1,165 +1,338 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import { apiRequest, UNAUTHORIZED_EVENT } from './api/client'
+import { AuthProvider, useAuth } from './auth/AuthContext'
+import LoginPage from './pages/LoginPage'
+import PublicDashboard from './pages/PublicDashboard'
+import RoleDashboard from './pages/RoleDashboard'
+import HospitalReportPage from './pages/HospitalReportPage'
+import HospitalMinePage from './pages/HospitalMinePage'
+import MedicalOfficerPendingPage from './pages/MedicalOfficerPendingPage'
+import MedicalOfficerReviewPage from './pages/MedicalOfficerReviewPage'
+import MedicalOfficerHistoryPage from './pages/MedicalOfficerHistoryPage'
 import './App.css'
 
-const healthUrl = `${import.meta.env.VITE_API_BASE_URL || 'http://localhost:5001/api'}/health`
+const protectedRoutes = {
+  '/hospital': 'HOSPITAL',
+  '/hospital/reports': 'HOSPITAL',
+  '/hospital/mine': 'HOSPITAL',
+  '/medical-officer': 'MEDICAL_OFFICER',
+  '/medical-officer/pending': 'MEDICAL_OFFICER',
+  '/medical-officer/review': 'MEDICAL_OFFICER',
+  '/medical-officer/history': 'MEDICAL_OFFICER',
+  '/admin': 'ADMIN',
+}
 
-function App() {
-  const [connection, setConnection] = useState('checking')
+const roleHome = {
+  PUBLIC: '/public',
+  HOSPITAL: '/hospital',
+  MEDICAL_OFFICER: '/medical-officer',
+  ADMIN: '/admin',
+}
+
+const roleLabels = {
+  PUBLIC: 'Public',
+  HOSPITAL: 'Hospital',
+  MEDICAL_OFFICER: 'Medical Officer',
+  ADMIN: 'Administrator',
+}
+
+function getMedicalOfficerReviewReportId(path) {
+  const match = path.match(/^\/medical-officer\/review\/([^/]+)$/)
+  if (!match) return null
+
+  try {
+    return decodeURIComponent(match[1])
+  } catch {
+    return ''
+  }
+}
+
+const roleNavigation = {
+  PUBLIC: [{ label: 'Public overview', path: '/public' }],
+  HOSPITAL: [
+    { label: 'Workspace', path: '/hospital' },
+    { label: 'Report submission', path: '/hospital/reports' },
+    { label: 'My reports', path: '/hospital/mine' },
+  ],
+  MEDICAL_OFFICER: [
+    { label: 'Workspace', path: '/medical-officer' },
+    { label: 'Pending reports', path: '/medical-officer/pending' },
+    { label: 'Review reports', path: '/medical-officer/review' },
+    { label: 'Review history', path: '/medical-officer/history' },
+  ],
+  ADMIN: [{ label: 'Management', path: '/admin' }],
+}
+
+function AppLink({ to, navigate, className = '', children, ...props }) {
+  return (
+    <a
+      href={to}
+      className={className}
+      onClick={(event) => {
+        if (
+          event.button !== 0 ||
+          event.metaKey ||
+          event.ctrlKey ||
+          event.shiftKey ||
+          event.altKey
+        ) {
+          return
+        }
+        event.preventDefault()
+        navigate(to)
+      }}
+      {...props}
+    >
+      {children}
+    </a>
+  )
+}
+
+function SiteHeader({ path, navigate }) {
+  const { user, logout } = useAuth()
+  const [health, setHealth] = useState('checking')
   const [retry, setRetry] = useState(0)
+  const navItems = user ? roleNavigation[user.role] || [] : []
 
   useEffect(() => {
     const controller = new AbortController()
-
-    async function checkBackend() {
-      setConnection('checking')
-
-      try {
-        const response = await fetch(healthUrl, { signal: controller.signal })
-
-        if (!response.ok) {
-          throw new Error(`Health check failed with status ${response.status}`)
-        }
-
-        const health = await response.json()
-        if (health.status !== 'ok') {
-          throw new Error('The API returned an unhealthy status')
-        }
-
-        setConnection('connected')
-      } catch (error) {
-        if (!controller.signal.aborted) {
-          console.error('Unable to connect to the backend:', error)
-          setConnection('disconnected')
-        }
-      }
-    }
-
-    checkBackend()
-
+    setHealth('checking')
+    apiRequest('/health', { authenticated: false, signal: controller.signal })
+      .then(({ status }) => setHealth(status === 'ok' ? 'connected' : 'disconnected'))
+      .catch((error) => {
+        if (error.name !== 'AbortError') setHealth('disconnected')
+      })
     return () => controller.abort()
   }, [retry])
 
-  const connectionMessage = {
-    checking: 'Checking backend connection',
-    connected: 'Backend connected',
-    disconnected: 'Backend not connected',
-  }[connection]
+  function handleLogout() {
+    logout()
+    navigate('/public', { replace: true })
+  }
+
+  const healthLabels = {
+    checking: 'Checking API',
+    connected: 'API connected',
+    disconnected: 'API unavailable',
+  }
 
   return (
-    <div className="site-shell">
-      <header className="site-header">
-        <a className="brand" href="#home" aria-label="Rog Rakshak home">
-          <span className="brand-mark" aria-hidden="true">
-            <span />
-          </span>
-          <span>Rog<span className="brand-accent">Rakshak</span></span>
-        </a>
-        <nav className="main-nav" aria-label="Main navigation">
-          <a href="#approach">Our approach</a>
-          <a href="#about">About the project</a>
-        </nav>
-        <div className={`connection connection-${connection}`} aria-live="polite">
-          <span className="connection-dot" />
-          <span>{connectionMessage}</span>
-          {connection === 'disconnected' && (
-            <button
-              className="retry-button"
-              onClick={() => setRetry((current) => current + 1)}
-              type="button"
-            >
-              Retry
-            </button>
-          )}
-        </div>
-      </header>
-
-      <main>
-        <section className="hero" id="home">
-          <div className="hero-copy">
-            <p className="eyebrow"><span /> COMMUNITY HEALTH, IN FOCUS</p>
-            <h1>Better awareness.<br /><span>Healthier communities.</span></h1>
-            <p className="hero-description">
-              Rog_Rakshak is an area-based disease surveillance project designed
-              to help communities and public-health teams stay informed.
-            </p>
-            <a className="primary-link" href="#approach">
-              Discover our approach <span aria-hidden="true">→</span>
-            </a>
-            <p className="hero-note">
-              A project for timely awareness and informed public-health action.
-            </p>
-          </div>
-
-          <div className="hero-art" aria-hidden="true">
-            <div className="art-orbit orbit-outer" />
-            <div className="art-orbit orbit-inner" />
-            <div className="art-center">
-              <span className="art-cross">+</span>
-              <span className="art-center-label">Community<br />wellbeing</span>
-            </div>
-            <span className="art-point point-one" />
-            <span className="art-point point-two" />
-            <span className="art-point point-three" />
-            <div className="art-caption">
-              <span className="caption-icon">⌖</span>
-              <span><strong>Area-based</strong><br />health awareness</span>
-            </div>
-            <span className="art-decoration decoration-one" />
-            <span className="art-decoration decoration-two" />
-          </div>
-        </section>
-
-        <section className="approach-section" id="approach">
-          <div className="section-heading">
-            <p className="eyebrow">HOW WE THINK</p>
-            <h2>Public health starts with understanding place.</h2>
-            <p>
-              Disease surveillance helps make health information useful at a
-              community level. Our first step is building a clear, responsible
-              foundation for that work.
-            </p>
-          </div>
-          <div className="approach-grid">
-            <article className="approach-card">
-              <span className="card-number">01</span>
-              <h3>See the bigger picture</h3>
-              <p>Organize health awareness around the areas communities call home.</p>
-            </article>
-            <article className="approach-card">
-              <span className="card-number">02</span>
-              <h3>Support early awareness</h3>
-              <p>Make it easier to understand health signals and where attention may be needed.</p>
-            </article>
-            <article className="approach-card">
-              <span className="card-number">03</span>
-              <h3>Keep people at the center</h3>
-              <p>Build with a focus on clarity, responsibility, and community wellbeing.</p>
-            </article>
-          </div>
-        </section>
-
-        <section className="about-section" id="about">
-          <div className="about-symbol" aria-hidden="true">+</div>
-          <div>
-            <p className="eyebrow">ABOUT ROG_RAKSHAK</p>
-            <h2>A foundation for area-based disease surveillance.</h2>
-            <p>
-              This project is in its first development stage. No disease
-              statistics are shown until reliable data is available.
-            </p>
-          </div>
-        </section>
-      </main>
-
-      <footer className="site-footer">
-        <a className="brand footer-brand" href="#home">
+    <header className="site-header">
+      <div className="header-inner">
+        <AppLink className="brand" to="/public" navigate={navigate} aria-label="Rog Rakshak public dashboard">
           <span className="brand-mark" aria-hidden="true"><span /></span>
           <span>Rog<span className="brand-accent">Rakshak</span></span>
-        </a>
+        </AppLink>
+
+        <nav className="main-nav" aria-label="Main navigation">
+          <AppLink className={path === '/' || path === '/public' ? 'nav-link active' : 'nav-link'} to="/public" navigate={navigate}>
+            Public data
+          </AppLink>
+          {navItems.map((item) => {
+            const isActive = path === item.path || (
+              item.path === '/medical-officer/review' &&
+              path.startsWith('/medical-officer/review/')
+            )
+            return (
+              <AppLink
+                className={isActive ? 'nav-link active' : 'nav-link'}
+                key={item.path}
+                to={item.path}
+                navigate={navigate}
+                aria-current={isActive ? 'page' : undefined}
+              >
+                {item.label}
+              </AppLink>
+            )
+          })}
+          {!user && (
+            <AppLink
+              className="nav-link"
+              to="/public#about"
+              navigate={(to) => {
+                navigate(to)
+                window.setTimeout(() => document.getElementById('about')?.scrollIntoView(), 0)
+              }}
+            >
+              About
+            </AppLink>
+          )}
+        </nav>
+
+        <div className="header-actions">
+          <div className={`connection connection-${health}`} aria-live="polite">
+            <span className="connection-dot" />
+            <span>{healthLabels[health]}</span>
+            {health === 'disconnected' && (
+              <button className="retry-button" type="button" onClick={() => setRetry((value) => value + 1)}>
+                Retry
+              </button>
+            )}
+          </div>
+          {user ? (
+            <div className="account-actions">
+              <span className="account-label">
+                <strong>{user.firstName}</strong>
+                <small>{roleLabels[user.role] || 'Account'}</small>
+              </span>
+              <button className="button button-outline button-small" type="button" onClick={handleLogout}>
+                Sign out
+              </button>
+            </div>
+          ) : (
+            <AppLink className="button button-primary button-small" to="/login" navigate={navigate}>
+              Sign in
+            </AppLink>
+          )}
+        </div>
+      </div>
+    </header>
+  )
+}
+
+function LoadingPage({ message = 'Loading your workspace…' }) {
+  return (
+    <div className="state-card page-state" role="status">
+      <span className="loading-spinner" aria-hidden="true" />
+      {message}
+    </div>
+  )
+}
+
+function AccessDenied({ actualRole, requiredRole, navigate }) {
+  return (
+    <section className="access-denied page-state">
+      <span className="denied-icon" aria-hidden="true">!</span>
+      <p className="eyebrow">ACCESS RESTRICTED</p>
+      <h1>This workspace is not available to your account.</h1>
+      <p>
+        You are signed in as {roleLabels[actualRole] || 'a different role'}.
+        This page requires the {roleLabels[requiredRole]} role.
+      </p>
+      <button className="button button-primary" type="button" onClick={() => navigate(roleHome[actualRole] || '/public')}>
+        Go to my workspace
+      </button>
+    </section>
+  )
+}
+
+function NotFound({ navigate }) {
+  return (
+    <section className="access-denied page-state">
+      <p className="eyebrow">PAGE NOT FOUND</p>
+      <h1>We could not find that page.</h1>
+      <button className="button button-primary" type="button" onClick={() => navigate('/public')}>
+        View public dashboard
+      </button>
+    </section>
+  )
+}
+
+function RouterApp() {
+  const { user, isLoading } = useAuth()
+  const [path, setPath] = useState(() => window.location.pathname)
+  const navigate = useCallback((target, { replace = false, state = {} } = {}) => {
+    const method = replace ? 'replaceState' : 'pushState'
+    window.history[method](state, '', target)
+    setPath(window.location.pathname)
+    window.scrollTo(0, 0)
+  }, [])
+  const reviewReportId = getMedicalOfficerReviewReportId(path)
+  const requiredRole = protectedRoutes[path] || (
+    reviewReportId !== null ? 'MEDICAL_OFFICER' : null
+  )
+
+  useEffect(() => {
+    function handlePopState() {
+      setPath(window.location.pathname)
+    }
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [])
+
+  useEffect(() => {
+    function handleUnauthorized() {
+      navigate('/login', { replace: true })
+    }
+    window.addEventListener(UNAUTHORIZED_EVENT, handleUnauthorized)
+    return () => window.removeEventListener(UNAUTHORIZED_EVENT, handleUnauthorized)
+  }, [navigate])
+
+  useEffect(() => {
+    if (isLoading) return
+    if (path === '/login' && user) {
+      navigate(roleHome[user.role] || '/public', { replace: true })
+      return
+    }
+    if (requiredRole && !user) {
+      navigate('/login', { replace: true })
+    }
+  }, [isLoading, navigate, path, requiredRole, user])
+
+  let content
+  if (path === '/' || path === '/public') {
+    content = <PublicDashboard />
+  } else if (path === '/login') {
+    content = user
+      ? <LoadingPage message="Opening your workspace…" />
+      : <LoginPage navigate={navigate} />
+  } else if (requiredRole) {
+    if (isLoading || !user) {
+      content = <LoadingPage />
+    } else if (user.role !== requiredRole) {
+      content = <AccessDenied actualRole={user.role} requiredRole={requiredRole} navigate={navigate} />
+    } else if (path === '/hospital/reports') {
+      content = <HospitalReportPage navigate={navigate} />
+    } else if (path === '/hospital/mine') {
+      content = <HospitalMinePage />
+    } else if (path === '/medical-officer/pending') {
+      content = <MedicalOfficerPendingPage navigate={navigate} />
+    } else if (path === '/medical-officer/history') {
+      content = <MedicalOfficerHistoryPage />
+    } else if (path === '/medical-officer/review' || reviewReportId !== null) {
+      content = (
+        <MedicalOfficerReviewPage
+          key={reviewReportId ?? 'review'}
+          reportId={reviewReportId}
+          navigate={navigate}
+        />
+      )
+    } else {
+      content = <RoleDashboard role={user.role} path={path} navigate={navigate} />
+    }
+  } else {
+    content = <NotFound navigate={navigate} />
+  }
+
+  return (
+    <div className="app-shell">
+      <SiteHeader path={path} navigate={navigate} />
+      {user && (
+        <div className="authenticated-banner">
+          Signed in as <strong>{user.firstName} {user.lastName}</strong>
+          <span>{roleLabels[user.role] || 'Account'}</span>
+        </div>
+      )}
+      <main className={path === '/' || path === '/public' ? 'main-content public-content' : 'main-content'}>
+        {content}
+      </main>
+      <footer className="site-footer">
+        <AppLink className="brand footer-brand" to="/public" navigate={navigate}>
+          <span className="brand-mark" aria-hidden="true"><span /></span>
+          <span>Rog<span className="brand-accent">Rakshak</span></span>
+        </AppLink>
         <p>Building awareness for healthier communities.</p>
-        <span className="footer-stage">Development stage 01</span>
+        <span className="footer-stage">Verified, area-level information</span>
       </footer>
     </div>
+  )
+}
+
+function App() {
+  return (
+    <AuthProvider>
+      <RouterApp />
+    </AuthProvider>
   )
 }
 
