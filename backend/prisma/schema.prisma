@@ -1,0 +1,218 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum DiseaseReportStatus {
+  PENDING
+  VERIFIED
+  REJECTED
+}
+
+model User {
+  id                   String               @id @default(cuid())
+  email                String               @unique
+  passwordHash         String?
+  firstName            String
+  lastName             String
+  phone                String?
+  roleId               String
+  role                 Role                 @relation(fields: [roleId], references: [id], onDelete: Restrict)
+  hospitalMemberships  HospitalUser[]
+  medicalOffice        MedicalOffice?
+  submittedReports     DiseaseReport[]      @relation("ReportSubmitter")
+  alerts               Alert[]
+  createdNotifications PublicNotification[] @relation("NotificationCreator")
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+
+  @@index([roleId])
+}
+
+model Role {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  description String?
+  users       User[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
+model Hospital {
+  id                 String          @id @default(cuid())
+  name               String
+  registrationNumber String?         @unique
+  address            String?
+  districtId         String?
+  district           District?       @relation(fields: [districtId], references: [id], onDelete: SetNull)
+  users              HospitalUser[]
+  diseaseReports     DiseaseReport[]
+  createdAt          DateTime        @default(now())
+  updatedAt          DateTime        @updatedAt
+
+  @@index([districtId])
+  @@index([name])
+}
+
+model HospitalUser {
+  id         String   @id @default(cuid())
+  hospitalId String
+  userId     String
+  jobTitle   String?
+  hospital   Hospital @relation(fields: [hospitalId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt  DateTime @default(now())
+
+  @@unique([hospitalId, userId])
+  @@index([userId])
+}
+
+model State {
+  id        String     @id @default(cuid())
+  name      String     @unique
+  code      String     @unique
+  districts District[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+}
+
+model District {
+  id        String     @id @default(cuid())
+  name      String
+  stateId   String
+  state     State      @relation(fields: [stateId], references: [id], onDelete: Cascade)
+  areas     Area[]
+  hospitals Hospital[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  @@unique([stateId, name])
+  @@index([stateId])
+}
+
+model Area {
+  id                  String               @id @default(cuid())
+  name                String
+  districtId          String
+  postalCode          String?
+  district            District             @relation(fields: [districtId], references: [id], onDelete: Cascade)
+  medicalOfficeAreas  MedicalOfficeArea[]
+  diseaseReports      DiseaseReport[]
+  publicNotifications PublicNotification[]
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+
+  @@unique([districtId, name])
+  @@index([districtId])
+}
+
+model MedicalOffice {
+  id              String              @id @default(cuid())
+  userId          String              @unique
+  officeCode      String              @unique
+  user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  areas           MedicalOfficeArea[]
+  reviewedReports DiseaseReport[]     @relation("ReportReviewer")
+  createdAt       DateTime            @default(now())
+  updatedAt       DateTime            @updatedAt
+}
+
+model MedicalOfficeArea {
+  id              String        @id @default(cuid())
+  medicalOfficeId String
+  areaId          String
+  medicalOffice   MedicalOffice @relation(fields: [medicalOfficeId], references: [id], onDelete: Cascade)
+  area            Area          @relation(fields: [areaId], references: [id], onDelete: Cascade)
+  createdAt       DateTime      @default(now())
+
+  @@unique([medicalOfficeId, areaId])
+  @@index([areaId])
+}
+
+model Disease {
+  id          String              @id @default(cuid())
+  code        String              @unique
+  name        String              @unique
+  description String?
+  isActive    Boolean             @default(true)
+  reportLines DiseaseReportLine[]
+  createdAt   DateTime            @default(now())
+  updatedAt   DateTime            @updatedAt
+}
+
+model DiseaseReport {
+  id                        String              @id @default(cuid())
+  submittedByUserId         String
+  areaId                    String
+  hospitalId                String?
+  reviewedByMedicalOfficeId String?
+  status                    DiseaseReportStatus @default(PENDING)
+  reportedAt                DateTime            @default(now())
+  reviewedAt                DateTime?
+  reviewNotes               String?
+  submittedBy               User                @relation("ReportSubmitter", fields: [submittedByUserId], references: [id], onDelete: Restrict)
+  area                      Area                @relation(fields: [areaId], references: [id], onDelete: Restrict)
+  hospital                  Hospital?           @relation(fields: [hospitalId], references: [id], onDelete: SetNull)
+  reviewedByMedicalOffice   MedicalOffice?      @relation("ReportReviewer", fields: [reviewedByMedicalOfficeId], references: [id], onDelete: SetNull)
+  lines                     DiseaseReportLine[]
+  alerts                    Alert[]
+  createdAt                 DateTime            @default(now())
+  updatedAt                 DateTime            @updatedAt
+
+  @@index([status, reportedAt])
+  @@index([areaId, reportedAt])
+  @@index([hospitalId])
+  @@index([reviewedByMedicalOfficeId])
+}
+
+model DiseaseReportLine {
+  id              String        @id @default(cuid())
+  diseaseReportId String
+  diseaseId       String
+  caseCount       Int           @default(1)
+  notes           String?
+  diseaseReport   DiseaseReport @relation(fields: [diseaseReportId], references: [id], onDelete: Cascade)
+  disease         Disease       @relation(fields: [diseaseId], references: [id], onDelete: Restrict)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@unique([diseaseReportId, diseaseId])
+  @@index([diseaseId])
+}
+
+model PublicNotification {
+  id          String    @id @default(cuid())
+  title       String
+  message     String
+  areaId      String?
+  createdById String?
+  publishedAt DateTime?
+  expiresAt   DateTime?
+  isActive    Boolean   @default(true)
+  area        Area?     @relation(fields: [areaId], references: [id], onDelete: SetNull)
+  createdBy   User?     @relation("NotificationCreator", fields: [createdById], references: [id], onDelete: SetNull)
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+
+  @@index([areaId, publishedAt])
+  @@index([isActive, publishedAt])
+}
+
+model Alert {
+  id              String         @id @default(cuid())
+  userId          String
+  diseaseReportId String?
+  title           String
+  message         String
+  readAt          DateTime?
+  user            User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  diseaseReport   DiseaseReport? @relation(fields: [diseaseReportId], references: [id], onDelete: SetNull)
+  createdAt       DateTime       @default(now())
+
+  @@index([userId, readAt])
+  @@index([diseaseReportId])
+}
