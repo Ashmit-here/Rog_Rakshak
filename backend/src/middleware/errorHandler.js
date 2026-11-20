@@ -9,7 +9,7 @@ function errorHandler(error, req, res, next) {
   }
 
   res.status(statusCode).json({
-    error: statusCode >= 500 ? 'Internal server error' : error.message,
+    error: statusCode >= 500 ? 'Internal server error' : 'Bad request',
   })
 }
 
