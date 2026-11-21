@@ -54,6 +54,104 @@ The system aims to improve disease monitoring, reporting transparency, and acces
 
 The frontend communicates with the backend through REST APIs. The backend handles authentication, authorization, validation, report processing, and database operations through Prisma.
 
+## 📁 Project Structure
+
+```text
+Rog_Rakshak/
+│
+├── backend/
+│   ├── prisma/
+│   │   ├── migrations/
+│   │   ├── schema.prisma
+│   │   ├── seed.js
+│   │   ├── seedDemoData.js
+│   │   └── seedTestData.js
+│   │
+│   ├── src/
+│   │   ├── config/
+│   │   │   ├── cors.js
+│   │   │   ├── environment.js
+│   │   │   └── prisma.js
+│   │   │
+│   │   ├── controllers/
+│   │   │   ├── authController.js
+│   │   │   ├── healthController.js
+│   │   │   └── reportController.js
+│   │   │
+│   │   ├── middleware/
+│   │   │   ├── authenticate.js
+│   │   │   ├── authorizeRoles.js
+│   │   │   ├── errorHandler.js
+│   │   │   └── notFound.js
+│   │   │
+│   │   ├── routes/
+│   │   │   ├── authRoutes.js
+│   │   │   ├── healthRoutes.js
+│   │   │   ├── publicRoutes.js
+│   │   │   └── reportRoutes.js
+│   │   │
+│   │   ├── app.js
+│   │   └── server.js
+│   │
+│   ├── test/
+│   │   ├── auth.test.js
+│   │   ├── reports.test.js
+│   │   ├── seedDemoData.test.js
+│   │   └── seedTestSafety.test.js
+│   │
+│   ├── .env.example
+│   ├── .gitignore
+│   ├── package.json
+│   └── package-lock.json
+│
+├── frontend/
+│   ├── src/
+│   │   ├── api/
+│   │   │   └── client.js
+│   │   │
+│   │   ├── auth/
+│   │   │   └── AuthContext.jsx
+│   │   │
+│   │   ├── pages/
+│   │   │   ├── HospitalMinePage.jsx
+│   │   │   ├── HospitalReportPage.jsx
+│   │   │   ├── LoginPage.jsx
+│   │   │   ├── MedicalOfficerHistoryPage.jsx
+│   │   │   ├── MedicalOfficerPendingPage.jsx
+│   │   │   ├── MedicalOfficerReviewPage.jsx
+│   │   │   ├── PublicDashboard.jsx
+│   │   │   └── RoleDashboard.jsx
+│   │   │
+│   │   ├── App.css
+│   │   ├── App.jsx
+│   │   ├── index.css
+│   │   └── main.jsx
+│   │
+│   ├── .gitignore
+│   ├── .oxlintrc.json
+│   ├── index.html
+│   ├── package.json
+│   ├── package-lock.json
+│   ├── README.md
+│   └── vite.config.js
+│
+└── .gitignore
+```
+
+### Folder Description
+
+- **backend/prisma:** Contains the Prisma database schema, migrations, and seed scripts.
+- **backend/src/config:** Contains database, CORS, and environment configuration.
+- **backend/src/controllers:** Handles application logic for authentication, health checks, and reports.
+- **backend/src/middleware:** Contains authentication, role authorization, and error-handling middleware.
+- **backend/src/routes:** Defines the backend API endpoints.
+- **backend/test:** Contains automated backend tests.
+- **frontend/src/api:** Handles communication with backend APIs.
+- **frontend/src/auth:** Contains authentication context and user session management.
+- **frontend/src/pages:** Contains the application's React pages.
+- **frontend/src:** Also contains the main application components and CSS files.
+
+
 ## 👥 User Roles
 
 ### 1. Public User
