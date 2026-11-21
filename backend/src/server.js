@@ -1,36 +1,23 @@
-// Import Express and application middleware
-const express = require('express')
-const corsMiddleware = require('./config/cors')
-const errorHandler = require('./middleware/errorHandler')
-const notFound = require('./middleware/notFound')
+const app = require('./app')
+const { validateEnvironment } = require('./config/environment')
 
-// Import API route modules
-const authRoutes = require('./routes/authRoutes')
-const healthRoutes = require('./routes/healthRoutes')
-const reportRoutes = require('./routes/reportRoutes')
-const publicRoutes = require('./routes/publicRoutes')
+function startServer() {
+  try {
+    validateEnvironment()
+  } catch (error) {
+    console.error(`Invalid server configuration: ${error.message}`)
+    process.exitCode = 1
+    return null
+  }
 
-// Initialize Express application
-const app = express()
+  const port = process.env.PORT || 5001
+  return app.listen(port, () => {
+    console.log(`Rog_Rakshak API listening on port ${port}`)
+  })
+}
 
-// Register global middleware
-app.use(corsMiddleware)
-app.use(express.json())
+if (require.main === module) {
+  startServer()
+}
 
-// Root route
-app.get('/', (req, res) => {
-  res.json({ message: 'Rog_Rakshak API is running' })
-})
-
-// Register API routes
-app.use('/api/health', healthRoutes)
-app.use('/api/auth', authRoutes)
-app.use('/api/reports', reportRoutes)
-app.use('/api/public', publicRoutes)
-
-// Handle unknown routes and application errors
-app.use(notFound)
-app.use(errorHandler)
-
-// Export Express application
-module.exports = app
+module.exports = { app, startServer }
