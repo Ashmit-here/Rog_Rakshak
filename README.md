@@ -440,6 +440,6 @@ Rog Rakshak aims to provide a centralized and secure platform for disease report
 
 ---
 
-**Developed as a college group project.**
+**Developed as a college group project .**
 
 **GitHub Repository:** [Ashmit-here/Rog_Rakshak](https://github.com/Ashmit-here/Rog_Rakshak)
